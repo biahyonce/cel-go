@@ -17,6 +17,7 @@ package ext
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/google/cel-go/cel"
@@ -84,6 +85,21 @@ var comparableTypes = []*cel.Type{
 //	["b", "c", "a"].sort() // return ["a", "b", "c"]
 //	[1, "b"].sort() // error
 //	[[1, 2, 3]].sort() // error
+//
+// # Reverse
+//
+// Introduced in version: 2
+//
+// Returns a new list in reverse order.
+//
+// <list>.reverse() -> <list>
+//
+// Examples:
+//
+// [1,2,3,4].reverse() // return [4,3,2,1]
+// ["a", "b", "c"].reverse() // return ["c", "b", "a"]
+// [10.0, 9.0, 8.0].reverse() // return [8.0, 9.0, 10.0]
+// ["a", 1, 12.0].reverse() // return [12.0, 1, "a"]
 
 func Lists(options ...ListsOption) cel.EnvOption {
 	l := &listsLib{
@@ -218,6 +234,29 @@ func (lib listsLib) CompileOptions() []cel.EnvOption {
 			)...,
 		)
 		opts = append(opts, sortDecl)
+
+		opts = append(opts,
+			cel.Function("reverse",
+				cel.MemberOverload(
+					"list_reverse",
+					[]*cel.Type{cel.ListType(cel.DynType)},
+					cel.ListType(cel.DynType),
+					cel.UnaryBinding(func(arg ref.Val) ref.Val {
+						list, ok := arg.(traits.Lister)
+						if !ok {
+							return types.MaybeNoSuchOverloadErr(arg)
+						}
+
+						ordered, err := reverseList(list)
+						if err != nil {
+							return types.WrapErr(err)
+						}
+
+						return ordered
+					}),
+				),
+			),
+		)
 	}
 
 	return opts
@@ -300,6 +339,22 @@ func sortList(list traits.Lister) (ref.Val, error) {
 	})
 
 	return types.DefaultTypeAdapter.NativeToValue(sorted), nil
+}
+
+func reverseList(list traits.Lister) (ref.Val, error) {
+	listLength := list.Size().(types.Int)
+	if listLength == 0 {
+		return list, nil
+	}
+
+	orderedList := make([]ref.Val, 0, list.Size().Value().(int64))
+	for it := list.Iterator(); it.HasNext().(types.Bool); {
+		orderedList = append(orderedList, it.Next())
+	}
+
+	slices.Reverse(orderedList)
+
+	return types.NewDynamicList(types.DefaultTypeAdapter, orderedList), nil
 }
 
 func templatedOverloads(types []*cel.Type, template func(t *cel.Type) cel.FunctionOpt) []cel.FunctionOpt {

@@ -45,6 +45,10 @@ func TestLists(t *testing.T) {
 		{expr: `[4, 3, 2, 1].sort() == [1, 2, 3, 4]`},
 		{expr: `["d", "a", "b", "c"].sort() == ["a", "b", "c", "d"]`},
 		{expr: `["d", 3, 2, "c"].sort() == ["a", "b", "c", "d"]`, err: "list elements must have the same type"},
+		{expr: `[1,2,3,4].reverse() == [4,3,2,1]`},
+		{expr: `["a", "b", "c"].reverse() == ["c", "b", "a"]`},
+		{expr: `[10.0, 9.0, 8.0].reverse() == [8.0, 9.0, 10.0]`},
+		{expr: `["a", 1, 12.0].reverse() == [12.0, 1, "a"]`},
 	}
 
 	env := testListsEnv(t)
